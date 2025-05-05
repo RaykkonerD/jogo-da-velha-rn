@@ -1,5 +1,6 @@
 import Jogador from "./Jogador";
 import Peca from "./Peca";
+import SituacaoPartida from "./SituacaoPartida";
 
 export default class Partida {
   private jogador1: Jogador;
@@ -14,31 +15,31 @@ export default class Partida {
     this.vezPrimeiro = true;
   }
 
-  get getJogador1() {
+  public getJogador1() {
     return this.jogador1;
   }
 
-  get getJogador2() {
+  public getJogador2() {
     return this.jogador2;
   }
 
-  get getTabuleiro() {
+  public getTabuleiro() {
     return this.tabuleiro;
   }
 
-  get getVezPrimeiro() {
+  public getVezPrimeiro() {
     return this.vezPrimeiro;
   }
 
-  joga(linha: number, coluna: number, peca: Peca) {
+  public joga(linha: number, coluna: number, peca: Peca) {
     this.tabuleiro[linha][coluna] = peca;
   }
 
-  mudaVez() {
+  public mudaVez(): void {
     this.vezPrimeiro = !this.vezPrimeiro;
   }
 
-  verificaFim() {
+  public verificaFim(): SituacaoPartida {
     const winConditions = [
       [
         [0, 0],
@@ -89,18 +90,18 @@ export default class Partida {
         this.tabuleiro[c[0]][c[1]] === this.tabuleiro[a[0]][a[1]] &&
         this.tabuleiro[a[0]][a[1]] != Peca.NONE
       ) {
-        return this.tabuleiro[a[0]][a[1]] == Peca.X ? 1 : 2;
+        return this.tabuleiro[a[0]][a[1]] == Peca.X ? SituacaoPartida.VitoriaJogador1 : SituacaoPartida.VitoriaJogador2;
       }
     }
 
     for (let line of this.tabuleiro) {
       for (let cell of line) {
         if (cell === Peca.NONE) {
-          return -1;
+          return SituacaoPartida.EmAndamento;
         }
       }
     }
 
-    return 0;
+    return SituacaoPartida.EmAndamento;
   }
 }

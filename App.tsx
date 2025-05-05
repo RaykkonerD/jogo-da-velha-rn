@@ -1,6 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import Jogador from './models/Jogador';
+import React from 'react';
+import Partida from './models/Partida';
+import JogadorAutomatizado from './models/JogadorAutomatizado';
+import Jogo from './models/Jogo';
+import Peca from './models/Peca';
+import SituacaoPartida from './models/SituacaoPartida';
 
 interface ICellProps {
   specificStyle?: ViewStyle;
@@ -9,22 +16,26 @@ interface ICellProps {
 }
 
 export default function App() {
-  const [table, setTable] = useState<string[]>(Array(9).fill(''));
-  const [player, setPlayer] = useState<boolean>(true);
+  const jogador1 = new Jogador("You");
+  const jogador2 = new JogadorAutomatizado("Machine");
+  const jogoInicio = new Jogo(jogador1, jogador2);
+  const partida = useRef<Partida>(jogoInicio.iniciaPartida());
+  const jogo = useRef<Jogo>(jogoInicio);
+  const [table, setTable] = useState<string[][]>(Array(3).fill(['', '', '']));
   const [player1Wins, setPlayer1Wins] = useState<number>(0);
   const [player2Wins, setPlayer2Wins] = useState<number>(0);
 
   useEffect(() => {
-    let check = checkWinner();
-    if (check > 0) {
+    const check = partida.current.verificaFim();
+    if (check == SituacaoPartida.VitoriaJogador1 || check == SituacaoPartida.VitoriaJogador2) {
       handleWin(check);
       return;
     }
-    if(check == 0){
-      handleDraw()
+    if (check == SituacaoPartida.Empate) {
+      handleClear();
       return;
     }
-    if(!player){
+    if (!partida.current.getVezPrimeiro()) {
       handleBotMove();
     }
   }, [table]);
@@ -34,8 +45,8 @@ export default function App() {
       <TouchableOpacity
         onPress={() => {
           if (value === '') {
-            setValue(player ? 'X' : 'O');
-            setPlayer(!player);
+            setValue(partida.current.getVezPrimeiro() ? 'X' : 'O');
+            partida.current.mudaVez()
           }
         }}
         style={[styles.cell, specificStyle]}>
@@ -44,68 +55,44 @@ export default function App() {
     );
   };
 
-  const checkWinner = () => {
-    const winConditions = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6],
-    ];
+  const handleValueChange = (line: number, column: number, newValue: string) => {
+    const vezPrimeiro = partida.current.getVezPrimeiro();
+    partida.current.joga(line, column, vezPrimeiro ? Peca.X : Peca.O);
 
-    for (let condition of winConditions) {
-      const [a, b, c] = condition;
-      if (table[a] && table[a] === table[b] && table[a] === table[c] && table[a] != '') {
-        return table[a] == 'X' ? 1 : 2;
-      }
-    }
-
-    for (let cell of table) {
-      if (cell === '') {
-        return -1;
-      }
-    }
-
-    return 0;
-  };
-
-  const handleValueChange = (index: number, newValue: string) => {
     const updatedValues = [...table];
-    updatedValues[index] = newValue;
+    updatedValues[line][column] = newValue;
     setTable(updatedValues);
   };
 
   const handleBotMove = () => {
-    let position: number;
-
-    do {
-      position = Math.floor(Math.random() * 9);
-    } while (table[position] !== '');
+    const currentTable = partida.current.getTabuleiro();
+    const [line, column] = (partida.current.getJogador2() as JogadorAutomatizado).realizaJogada(currentTable);
+    const vezPrimeiro = partida.current.getVezPrimeiro();
+    partida.current.joga(line, column, vezPrimeiro ? Peca.X : Peca.O);
 
     const updatedValues = [...table];
-    updatedValues[position] = 'O';
+    updatedValues[line][column] = 'O';
     setTable(updatedValues);
-    setPlayer(!player);
+    partida.current.mudaVez();
   }
 
-  const handleWin = (value: number) => {
-    if (value == 1) {
+  const handleWin = (value: SituacaoPartida) => {
+    if (value == SituacaoPartida.VitoriaJogador1) {
       setPlayer1Wins(prevWins => prevWins + 1);
+      partida.current.getJogador1().adicionaVitoria();
     } else {
       setPlayer2Wins(prevWins => prevWins + 1);
+      partida.current.getJogador2().adicionaVitoria();
     }
     setTable(Array(9).fill(''));
   }
 
-  const handleDraw = () => {
-    setTable(Array(9).fill(''));
+  const handleClear = () => {
+    setTable(Array(3).fill(['', '', '']));
   }
 
-  const handleClear = () => {
-    setTable(Array(9).fill(''));
+  const handleRestart = () => {
+    handleClear();
     setPlayer1Wins(0);
     setPlayer2Wins(0);
   }
@@ -119,51 +106,51 @@ export default function App() {
       <View style={styles.table}>
         <View style={styles.line}>
           <Cell
-            value={table[0]}
-            setValue={(newValue) => handleValueChange(0, newValue)}
+            value={table[0][0]}
+            setValue={(newValue) => handleValueChange(0, 1, newValue)}
           />
           <Cell
-            value={table[1]}
-            setValue={(newValue) => handleValueChange(1, newValue)}
+            value={table[0][1]}
+            setValue={(newValue) => handleValueChange(0, 2, newValue)}
             specificStyle={styles.middleColumn}
           />
           <Cell
-            value={table[2]}
-            setValue={(newValue) => handleValueChange(2, newValue)}
+            value={table[0][2]}
+            setValue={(newValue) => handleValueChange(0, 3, newValue)}
           />
         </View>
         <View style={[styles.line, styles.middleLine]}>
           <Cell
-            value={table[3]}
-            setValue={(newValue) => handleValueChange(3, newValue)}
+            value={table[1][0]}
+            setValue={(newValue) => handleValueChange(1, 0, newValue)}
           />
           <Cell
-            value={table[4]}
-            setValue={(newValue) => handleValueChange(4, newValue)}
+            value={table[1][1]}
+            setValue={(newValue) => handleValueChange(1, 1, newValue)}
             specificStyle={styles.middleColumn}
           />
           <Cell
-            value={table[5]}
-            setValue={(newValue) => handleValueChange(5, newValue)}
+            value={table[1][2]}
+            setValue={(newValue) => handleValueChange(1, 2, newValue)}
           />
         </View>
         <View style={styles.line}>
           <Cell
-            value={table[6]}
-            setValue={(newValue) => handleValueChange(6, newValue)}
+            value={table[2][0]}
+            setValue={(newValue) => handleValueChange(2, 0, newValue)}
           />
           <Cell
-            value={table[7]}
-            setValue={(newValue) => handleValueChange(7, newValue)}
+            value={table[2][1]}
+            setValue={(newValue) => handleValueChange(2, 1, newValue)}
             specificStyle={styles.middleColumn}
           />
           <Cell
-            value={table[8]}
-            setValue={(newValue) => handleValueChange(8, newValue)}
+            value={table[2][2]}
+            setValue={(newValue) => handleValueChange(2, 2, newValue)}
           />
         </View>
       </View>
-      <TouchableOpacity onPress={() => handleClear()} style={styles.button}>
+      <TouchableOpacity onPress={() => handleRestart()} style={styles.button}>
         <Text>Reiniciar</Text>
       </TouchableOpacity>
     </View>

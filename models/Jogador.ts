@@ -2,20 +2,20 @@ export default class Jogador {
   private name: string;
   private vitorias: number;
 
-  constructor(name: string, vitorias: number){
+  constructor(name: string){
     this.name = name;
-    this.vitorias = vitorias;
+    this.vitorias = 0;
   }
 
-  get getName(){
+  public getName(){
     return this.name;
   }
 
-  get getVitorias(){
+  public getVitorias(){
     return this.name;
   }
 
-  adicionaVitoria() {
+  public adicionaVitoria() {
     this.vitorias++;
   }
 }
